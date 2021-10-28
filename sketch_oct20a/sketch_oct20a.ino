@@ -13,6 +13,7 @@ const int  buttonOK = 6;
 const int  buttonS = 7;    
 const int  buttonM = 8;
 const int  buttonH = 9; 
+String pause = ":";
 
 int buttonPushCounter = 0;
 int buttonState = 0;
@@ -20,6 +21,7 @@ int lastButtonState = 0;
 
 ClickEncoder *encoder; // variable representing the rotary encoder
 int16_t last, value; // variables for current and last rotation value
+int16_t mi = 0,se = 0;
 
 void timerIsr() {
   encoder->service();
@@ -28,6 +30,7 @@ void timerIsr() {
 void setup() {
   lcd.begin(16, 2);
   pinMode(buttonOK, INPUT);
+  
   pinMode(LED_BUILTIN, OUTPUT);
   encoder = new ClickEncoder(ENCODER_DT, ENCODER_CLK, ENCODER_SW);
 
@@ -35,47 +38,64 @@ void setup() {
   Timer1.attachInterrupt(timerIsr); 
   last = -1;
 }
-void button(int button){
+void button(int button, bool type,bool symbol){
   buttonState = button;
 
   if (buttonState != lastButtonState) {
     if (buttonState == HIGH) {
-      buttonPushCounter++;
-      lcd.print(buttonPushCounter);
-    } else {
-    }
+      if(symbol){
+        if(type)
+          se++;
+        else
+          mi++;
+        }
+        else{
+         if(type)
+          se--;
+        else
+          mi--;
+        } 
+          }
+      
+    } 
     lastButtonState = buttonState;
 }
-}
+
 
 void loop() {
-  button(digitalRead(buttonOK));
-  
+  button(digitalRead(buttonOK),true,true);
+    
+  se += encoder->getValue();
+  if(se == 60){
+    se = 0;
+    mi++;
+  }
+  if(se < 0){
+    if(mi != 0){
+      se = 59;
+      mi--;
+    }
+    else
+    se= 0;
+    }
+    
 
-  value += encoder->getValue();
-
-  // This part of the code is responsible for the actions when you rotate the encoder
-  if (value != last) { // New value is different than the last one, that means to encoder was rotated
-    if(last<value) // Detecting the direction of rotation
-       lcd.print(value);//Consumer.write(MEDIA_VOLUME_UP); Replace this line to have a different function when rotating counter-clockwise
-      else
-       lcd.print(value);//Consumer.write(MEDIA_VOLUME_DOWN); Replace this line to have a different function when rotating clockwise
-    last = value; // Refreshing the "last" varible for the next loop with the current value
-   // Serial.print("Encoder Value: "); // Text output of the rotation value used manily for debugging (open Tools - Serial Monitor to see it)
-    //Serial.println(value);
+  if (se != last) {
+    lcd.clear();
+    lcd.print("Minutnik:");
+    lcd.setCursor(0,1);
+    lcd.print(mi+pause+se);
+    last = se;
   }
 
-  // This next part handles the rotary encoder BUTTON
-  ClickEncoder::Button b = encoder->getButton(); // Asking the button for it's current state
-  if (b != ClickEncoder::Open) { // If the button is unpressed, we'll skip to the end of this if block
-    //Serial.print("Button: "); 
-    //#define VERBOSECASE(label) case label: Serial.println(#label); break;
+  ClickEncoder::Button b = encoder->getButton();
+  if (b != ClickEncoder::Open) {
     switch (b) {
-      case ClickEncoder::Clicked: // Button was clicked once
-        digitalWrite(LED_BUILTIN, HIGH); // Replace this line to have a different function when clicking button once
+      case ClickEncoder::Clicked:
+        digitalWrite(LED_BUILTIN, HIGH);
       break;  
-      case ClickEncoder::DoubleClicked: // Button was double clicked
-         digitalWrite(LED_BUILTIN, LOW); // Replace this line to have a different function when double-clicking
+      case ClickEncoder::DoubleClicked:
+         digitalWrite(LED_BUILTIN, LOW);
       break;        
     }
   }
